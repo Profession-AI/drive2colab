@@ -65,8 +65,3 @@ class DriveConnector:
     df = df.iloc[1:]
     df.reset_index(drop=True, inplace=True)
     return df
-
-
-
-df = DriveConnector(SHARED_DRIVE_ID).get_gsheet_as_df(FILE_NAME, COURSE_ID)
-df.head()
