@@ -30,9 +30,11 @@ class DriveConnector:
     return None
 
 
-  def _get_file_id(self, file_name, folder_id):
+  def _get_file_id(self, file_name, folder_id=None):
     
-    response = self._service.files().list(q=f"name='{file_name}' and '{folder_id}' in parents",
+    query = f"name='{file_name}'" + f" and '{folder_id}' in parents" if folder_id!=None else ""
+    
+    response = self._service.files().list(q=query,
                                   spaces='drive',
                                   driveId=self._drive_id,
                                   corpora="drive",
@@ -40,15 +42,20 @@ class DriveConnector:
                                   supportsAllDrives=True,
                                   fields='files(id, name)').execute()
 
+    print(response)
+
     for file in response.get('files', []):
         return file.get('id')
 
     return None
 
 
-  def get_gsheet_as_df(self, file_name, folder_name):
+  def get_gsheet_as_df(self, file_name, folder_name=None):
 
-    folder_id = self._get_folder_id(folder_name)
+    if folder_name is None:
+      folder_id = None
+    else:
+      folder_id = self._get_folder_id(folder_name)
     file_id = self._get_file_id(file_name, folder_id)
 
     gc = gspread.authorize(self._creds)
