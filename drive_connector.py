@@ -65,7 +65,7 @@ class DriveConnector:
 
   def get_gsheet_as_df(self, file_name, folder_name=None, sheet=None):
 
-    spreadsheet = self.get_sheet(file_name, folder_name=folder_name)
+    spreadsheet = self.get_gsheet(file_name, folder_name=folder_name)
 
     if sheet is not None:
       worksheet = spreadsheet.worksheet(sheet)
@@ -73,7 +73,7 @@ class DriveConnector:
     else:
       df = pd.DataFrame()
       for worksheet in spreadsheet.worksheets():
-        df_tmp = self._gsheet_to_df(worksheet)
+        df_tmp = self.gsheet_to_df(worksheet)
         df = pd.concat([df, df_tmp], ignore_index=True)
     return df
 
