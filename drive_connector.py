@@ -2,6 +2,7 @@ from google.colab import auth
 from google.auth import default
 from googleapiclient.discovery import build
 import gspread
+from gspread_dataframe import set_with_dataframe
 import pandas as pd
 
 
@@ -31,9 +32,9 @@ class DriveConnector:
 
 
   def _get_file_id(self, file_name, folder_id=None):
-    
-    query = f"name='{file_name}'" + f" and '{folder_id}' in parents" if folder_id!=None else ""
-    
+
+    query = f"name='{file_name}'" + (f" and '{folder_id}' in parents" if folder_id!=None else "")
+
     response = self._service.files().list(q=query,
                                   spaces='drive',
                                   driveId=self._drive_id,
@@ -42,15 +43,13 @@ class DriveConnector:
                                   supportsAllDrives=True,
                                   fields='files(id, name)').execute()
 
-    print(response)
-
     for file in response.get('files', []):
         return file.get('id')
 
     return None
 
 
-  def get_gsheet_as_df(self, file_name, folder_name=None):
+  def get_gsheet(self, file_name, folder_name=None):
 
     if folder_name is None:
       folder_id = None
@@ -60,15 +59,35 @@ class DriveConnector:
 
     gc = gspread.authorize(self._creds)
     spreadsheet_url = 'https://docs.google.com/spreadsheets/d/'+file_id
-    sheet = gc.open_by_url(spreadsheet_url).sheet1
-    df = self._gsheet_to_df(sheet)
+    spreadsheet = gc.open_by_url(spreadsheet_url)
+
+    return spreadsheet
+
+  def get_gsheet_as_df(self, file_name, folder_name=None, sheet=None):
+
+    spreadsheet = self.get_sheet(file_name, folder_name=folder_name)
+
+    if sheet is not None:
+      worksheet = spreadsheet.worksheet(sheet)
+      df = self.gsheet_to_df(worksheet)
+    else:
+      df = pd.DataFrame()
+      for worksheet in spreadsheet.worksheets():
+        df_tmp = self._gsheet_to_df(worksheet)
+        df = pd.concat([df, df_tmp], ignore_index=True)
     return df
 
 
-  def _gsheet_to_df(self, sheet):
+  def gsheet_to_df(self, sheet):
     data = sheet.get_all_values()
     df = pd.DataFrame(data)
     df.columns = df.iloc[0]
     df = df.iloc[1:]
     df.reset_index(drop=True, inplace=True)
     return df
+
+  def write_gsheet(self, file_name, df, folder_name=None,):
+    spreadsheet = self.get_gsheet(file_name, folder_name=folder_name)
+    worksheet = spreadsheet.sheet1
+    set_with_dataframe(worksheet, df)
+    return spreadsheet
