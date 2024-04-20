@@ -8,6 +8,8 @@ import pandas as pd
 
 class DriveConnector:
 
+  _BASE_URL = 'https://docs.google.com/spreadsheets/d/'
+
   def __init__(self, drive_id):
     self._drive_id = drive_id
     self._service = build('drive', 'v3')
@@ -34,7 +36,6 @@ class DriveConnector:
   def _get_file_id(self, file_name, folder_id=None):
 
     query = f"name='{file_name}'" + (f" and '{folder_id}' in parents" if folder_id!=None else "")
-
     response = self._service.files().list(q=query,
                                   spaces='drive',
                                   driveId=self._drive_id,
@@ -58,7 +59,7 @@ class DriveConnector:
     file_id = self._get_file_id(file_name, folder_id)
 
     gc = gspread.authorize(self._creds)
-    spreadsheet_url = 'https://docs.google.com/spreadsheets/d/'+file_id
+    spreadsheet_url = self._BASE_URL+file_id
     spreadsheet = gc.open_by_url(spreadsheet_url)
 
     return spreadsheet
@@ -86,8 +87,11 @@ class DriveConnector:
     df.reset_index(drop=True, inplace=True)
     return df
 
-  def write_gsheet(self, file_name, df, folder_name=None,):
+  def write_gsheet(self, file_name, df, sheet_name=None, folder_name=None,):
     spreadsheet = self.get_gsheet(file_name, folder_name=folder_name)
-    worksheet = spreadsheet.sheet1
+    if sheet_name==None:
+      worksheet = spreadsheet.sheet1
+    else:
+      worksheet = spreadsheet.worksheet(sheet_name)
     set_with_dataframe(worksheet, df)
-    return spreadsheet
+    return self._BASE_URL+spreadsheet.id
