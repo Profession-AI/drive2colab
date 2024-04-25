@@ -13,6 +13,7 @@ class DriveConnector:
   def __init__(self, drive_id):
     self._drive_id = drive_id
     self._service = build('drive', 'v3')
+    self._service_doc = build('docs', 'v1')
     self._creds, _ = default()
     auth.authenticate_user()
 
@@ -95,3 +96,29 @@ class DriveConnector:
       worksheet = spreadsheet.worksheet(sheet_name)
     set_with_dataframe(worksheet, df)
     return self._BASE_URL+spreadsheet.id
+
+
+  def get_gdoc(self, file_name, folder_name=None):
+    if folder_name is None:
+      folder_id = None
+    else:
+      folder_id = self._get_folder_id(folder_name)
+    file_id = self._get_file_id(file_name, folder_id)
+    document = self._service_doc.documents().get(documentId=file_id).execute()
+    doc = document.get('body').get('content')
+    return doc
+
+
+  def get_gdoc_as_txt(self, file_name, folder_name=None):
+    doc = self.get_gdoc(file_name, folder_name)
+    return self._read_paragraph_element(doc)
+
+  def _read_paragraph_element(self, elements):
+    text = ""
+    for element in elements:
+        if 'textRun' in element:
+            text += element['textRun']['content']
+        elif 'paragraph' in element:
+            text += self._read_paragraph_element(element['paragraph']['elements'])
+    return text
+
